@@ -1,42 +1,54 @@
-export function createClient(): any {
-  const STORAGE_KEY = 'ra_demo_supabase_session';
+import { env } from '@/lib/env';
 
-  function readSession() {
-    try {
-      const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) {
-      return null;
-    }
+let realClient: any = null;
+if (!env.useMockMode && typeof window !== 'undefined') {
+  // Only import @supabase/supabase-js in browser and production mode
+  // @ts-ignore
+  const { createClient: supabaseCreateClient } = require('@supabase/supabase-js');
+  realClient = supabaseCreateClient(env.supabase.url, env.supabase.anonKey);
+}
+
+function readSession() {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('ra_demo_supabase_session') : null;
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
   }
+}
 
-  function writeSession(session: any) {
+function writeSession(session: any) {
+  try {
+    if (typeof window !== 'undefined') localStorage.setItem('ra_demo_supabase_session', JSON.stringify(session));
     try {
-      if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-      try {
-        if (typeof document !== 'undefined') {
-          const cookieVal = encodeURIComponent(JSON.stringify(session));
-          document.cookie = `ra_demo_session=${cookieVal}; Path=/; Max-Age=${60 * 60}; SameSite=Lax`;
-        }
-      } catch (e) {
-        // ignore cookie write failures
+      if (typeof document !== 'undefined') {
+        const cookieVal = encodeURIComponent(JSON.stringify(session));
+        document.cookie = `ra_demo_session=${cookieVal}; Path=/; Max-Age=${60 * 60}; SameSite=Lax`;
       }
     } catch (e) {
-      // ignore
+      // ignore cookie write failures
     }
+  } catch (e) {
+    // ignore
   }
+}
 
-  function clearSession() {
-    try {
-      if (typeof window !== 'undefined') localStorage.removeItem(STORAGE_KEY);
-    } catch (e) {
-      // ignore
-    }
+function clearSession() {
+  try {
+    if (typeof window !== 'undefined') localStorage.removeItem('ra_demo_supabase_session');
+  } catch (e) {
+    // ignore
   }
+}
 
-  // Demo credential for the public demo site
-  const DEMO_EMAIL = 'demo@demo.local';
-  const DEMO_PASSWORD = 'Demo1234!';
+// Demo credential for the public demo site
+const DEMO_EMAIL = 'demo@demo.local';
+const DEMO_PASSWORD = 'Demo1234!';
+
+export function createClient(): any {
+  if (!env.useMockMode && realClient) {
+    return realClient;
+  }
 
   return {
     from: () => ({
