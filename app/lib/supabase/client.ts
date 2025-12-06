@@ -2,29 +2,29 @@ export function createClient() {
   const { env } = require('../env');
   
   if (env.useMockMode) {
-    // Return mock client for development
     return {
-      from: () => ({
-        select: () => ({
-          eq: () => ({
+      from: (table: string) => ({
+        select: (columns?: string) => ({
+          eq: (column: string, value: any) => ({
             maybeSingle: async () => ({ data: null, error: null }),
             single: async () => ({ data: null, error: null }),
           }),
         }),
+        insert: async (rows: any[]) => ({ data: rows, error: null }),
       }),
     };
   }
 
   // TODO: Implement real Supabase client
-  // For now, return mock client
   return {
-    from: () => ({
-      select: () => ({
-        eq: () => ({
+    from: (table: string) => ({
+      select: (columns?: string) => ({
+        eq: (column: string, value: any) => ({
           maybeSingle: async () => ({ data: null, error: null }),
           single: async () => ({ data: null, error: null }),
         }),
       }),
+      insert: async (rows: any[]) => ({ data: rows, error: null }),
     }),
   };
 }

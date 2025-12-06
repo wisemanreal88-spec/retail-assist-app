@@ -1,22 +1,19 @@
 import { env } from '@/lib/env';
 
 export async function createAdminSupabaseClient() {
-  // This client would normally use the SUPABASE_SERVICE_ROLE_KEY server-side
   if (env.useMockMode) {
-    // return mock admin client (similar to mock-client)
     return {
-      from: () => ({
-        select: () => ({
-          eq: () => ({
+      from: (table: string) => ({
+        select: (columns?: string) => ({
+          eq: (column: string, value: any) => ({
             maybeSingle: async () => ({ data: null, error: null }),
             single: async () => ({ data: null, error: null }),
           }),
           single: async () => ({ data: null, error: null }),
         }),
-        upsert: () => ({
-          select: () => ({
-            maybeSingle: async () => ({ data: null, error: null }),
-          }),
+        insert: async (rows: any[]) => ({ data: rows, error: null }),
+        upsert: (rows: any[], options?: any) => ({
+          select: async (columns?: string) => ({ data: rows, error: null }),
         }),
       }),
       auth: {
@@ -27,18 +24,17 @@ export async function createAdminSupabaseClient() {
 
   // TODO: Implement real Supabase admin client using SUPABASE_SERVICE_ROLE_KEY
   return {
-    from: () => ({
-      select: () => ({
-        eq: () => ({
+    from: (table: string) => ({
+      select: (columns?: string) => ({
+        eq: (column: string, value: any) => ({
           maybeSingle: async () => ({ data: null, error: null }),
           single: async () => ({ data: null, error: null }),
         }),
         single: async () => ({ data: null, error: null }),
       }),
-      upsert: () => ({
-        select: () => ({
-          maybeSingle: async () => ({ data: null, error: null }),
-        }),
+      insert: async (rows: any[]) => ({ data: rows, error: null }),
+      upsert: (rows: any[], options?: any) => ({
+        select: async (columns?: string) => ({ data: rows, error: null }),
       }),
     }),
     auth: {
