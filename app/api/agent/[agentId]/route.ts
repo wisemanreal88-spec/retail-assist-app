@@ -26,7 +26,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ age
 
     if (apiKeyHeader) {
       // Use admin client for API-key lookups (bypass RLS)
-      const admin = isTestMode ? createMockAdminSupabaseClient() : createAdminSupabaseClient();
+      const admin = isTestMode ? await createMockAdminSupabaseClient() : await createAdminSupabaseClient();
       const { data: agentRow, error: keyErr } = await admin
         .from('agents')
         .select('*')
