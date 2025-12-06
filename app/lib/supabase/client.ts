@@ -6,7 +6,10 @@ export function createClient() {
     signInWithOAuth: async (options: any) => ({ data: null, error: null }),
     signUp: async (credentials: any) => ({ data: null, error: null }),
     signOut: async () => ({ error: null }),
+    resetPasswordForEmail: async (email: string, options?: any) => ({ data: null, error: null }),
+    updateUser: async (attributes: any) => ({ data: null, error: null }),
     getSession: async () => ({ data: { session: null } }),
+    getUser: async () => ({ data: { user: null }, error: null }),
     onAuthStateChange: (callback: any) => ({ data: { subscription: { unsubscribe: () => {} } } }),
   };
   
