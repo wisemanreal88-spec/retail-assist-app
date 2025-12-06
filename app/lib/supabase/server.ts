@@ -2,6 +2,7 @@ function createQueryBuilder() {
   return {
     eq: (column: string, value: any) => createQueryBuilder(),
     limit: (n: number) => createQueryBuilder(),
+    order: (column: string, options?: any) => createQueryBuilder(),
     select: (columns?: string) => createQueryBuilder(),
     maybeSingle: async () => ({ data: null, error: null }),
     single: async () => ({ data: null, error: null }),
