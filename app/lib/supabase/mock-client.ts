@@ -13,7 +13,7 @@ export async function createMockAdminSupabaseClient() {
     from: (table: string) => ({
       select: (columns?: string) => createQueryBuilder(),
       insert: (rows: any[]) => createQueryBuilder(),
-      upsert: (rows: any[], options?: any) => createQueryBuilder(),
+      upsert: (rows: any, options?: any) => createQueryBuilder(),
     }),
     auth: {
       getSession: async () => ({ data: { session: null } }),
