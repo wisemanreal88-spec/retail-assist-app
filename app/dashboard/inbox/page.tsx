@@ -5,7 +5,7 @@ import { env } from '@/lib/env';
 
 export default async function InboxPage() {
   const isTestMode = env.isTestMode;
-  const supabase = isTestMode ? createMockAdminSupabaseClient() : await createServerSupabaseClient();
+  const supabase = isTestMode ? await createMockAdminSupabaseClient() : await createServerSupabaseClient();
 
   // server-side fetch messages for current user
   let messages: any[] = [];

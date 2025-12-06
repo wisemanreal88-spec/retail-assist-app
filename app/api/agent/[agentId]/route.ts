@@ -20,7 +20,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ age
     const isTestMode = env.isTestMode;
     
     // Create supabase server client (uses cookies for auth when no API key)
-    const supabase = isTestMode ? createMockAdminSupabaseClient() : await createServerSupabaseClient();
+    const supabase = isTestMode ? await createMockAdminSupabaseClient() : await createServerSupabaseClient();
 
     let agent: any = null;
 

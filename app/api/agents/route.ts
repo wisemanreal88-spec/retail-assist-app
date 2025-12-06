@@ -7,7 +7,7 @@ import { env } from '@/lib/env';
 export async function POST(request: Request) {
   try {
     const isTestMode = env.isTestMode;
-    const supabase = isTestMode ? createMockAdminSupabaseClient() : await createServerSupabaseClient();
+    const supabase = isTestMode ? await createMockAdminSupabaseClient() : await createServerSupabaseClient();
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session && !isTestMode) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

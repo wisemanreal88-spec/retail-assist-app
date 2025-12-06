@@ -13,7 +13,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ age
     if (!content) return NextResponse.json({ error: 'Missing content' }, { status: 400 });
 
     const isTestMode = env.isTestMode;
-    const supabase = isTestMode ? createMockAdminSupabaseClient() : await createServerSupabaseClient();
+    const supabase = isTestMode ? await createMockAdminSupabaseClient() : await createServerSupabaseClient();
 
     // Save public comment
     try {
