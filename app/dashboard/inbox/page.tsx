@@ -1,9 +1,10 @@
 import React from 'react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { createMockAdminSupabaseClient } from '@/lib/supabase/mock-client';
+import { env } from '@/lib/env';
 
 export default async function InboxPage() {
-  const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true';
+  const isTestMode = env.isTestMode;
   const supabase = isTestMode ? createMockAdminSupabaseClient() : await createServerSupabaseClient();
 
   // server-side fetch messages for current user

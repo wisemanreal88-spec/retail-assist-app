@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { detectCommentEvent } from '@/lib/meta/comment';
 import { runCommentAutomation } from '@/lib/automation/comment/runCommentAutomation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { env, validateEnv } from '@/lib/env';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
     workspaceId: workspace.id,
     comment: data,
     rule,
-    pageAccessToken: process.env.META_PAGE_ACCESS_TOKEN!, // must be set
+    pageAccessToken: env.meta.pageAccessToken,
     // aiAgent: optional, can be injected here
   });
   return NextResponse.json(result);
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
   const mode = url.searchParams.get('hub.mode');
   const token = url.searchParams.get('hub.verify_token');
   const challenge = url.searchParams.get('hub.challenge');
-  if (mode === 'subscribe' && token === process.env.META_VERIFY_TOKEN) {
+  if (mode === 'subscribe' && token === env.meta.verifyToken) {
     return new Response(challenge, { status: 200 });
   }
   return new Response('Forbidden', { status: 403 });

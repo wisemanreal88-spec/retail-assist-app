@@ -4,6 +4,7 @@ import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 import { createMockAdminSupabaseClient } from '@/lib/supabase/mock-client';
 import { callOpenAIChat } from '@/lib/openai/server';
 import { callOpenAI } from '@/lib/openai/mock';
+import { env } from '@/lib/env';
 
 export async function POST(request: Request, { params }: { params: Promise<{ agentId: string }> }) {
   try {
@@ -16,7 +17,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ age
     const apiKeyHeader = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace(/^Bearer\s+/, '');
 
     // Use mock or real client based on test mode
-    const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true';
+    const isTestMode = env.isTestMode;
     
     // Create supabase server client (uses cookies for auth when no API key)
     const supabase = isTestMode ? createMockAdminSupabaseClient() : await createServerSupabaseClient();

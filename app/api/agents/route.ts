@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { createMockAdminSupabaseClient } from '@/lib/supabase/mock-client';
 import { generateApiKey } from '@/lib/utils/helpers';
+import { env } from '@/lib/env';
 
 export async function POST(request: Request) {
   try {
-    const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true';
+    const isTestMode = env.isTestMode;
     const supabase = isTestMode ? createMockAdminSupabaseClient() : await createServerSupabaseClient();
 
     const { data: { session } } = await supabase.auth.getSession();

@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { createMockAdminSupabaseClient } from '@/lib/supabase/mock-client';
 import { callOpenAI } from '@/lib/openai/mock';
 import { callOpenAIChat } from '@/lib/openai/server';
+import { env } from '@/lib/env';
 
 export async function POST(request: Request, { params }: { params: Promise<{ agentId: string }> }) {
   try {
@@ -11,7 +12,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ age
     const { author_email, content } = body;
     if (!content) return NextResponse.json({ error: 'Missing content' }, { status: 400 });
 
-    const isTestMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true';
+    const isTestMode = env.isTestMode;
     const supabase = isTestMode ? createMockAdminSupabaseClient() : await createServerSupabaseClient();
 
     // Save public comment
