@@ -1,4 +1,35 @@
 export function createClient(): any {
+  const STORAGE_KEY = 'ra_demo_supabase_session';
+
+  function readSession() {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeSession(session: any) {
+    try {
+      if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function clearSession() {
+    try {
+      if (typeof window !== 'undefined') localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // Demo credential for the public demo site
+  const DEMO_EMAIL = 'demo@demo.local';
+  const DEMO_PASSWORD = 'Demo1234!';
+
   return {
     from: () => ({
       select: () => ({
@@ -10,18 +41,47 @@ export function createClient(): any {
       insert: async () => ({ data: null, error: null }),
     }),
     auth: {
+      // Simulate password sign-in and persist session to localStorage
       signInWithPassword: async ({ email, password }: { email: string; password: string }) => {
-        return { data: null, error: null };
+        if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
+          const user = { id: 'demo_user', email: DEMO_EMAIL, user_metadata: { name: 'Demo User' } };
+          const session = { user, access_token: 'demo_token', expires_at: Date.now() + 1000 * 60 * 60 };
+          writeSession({ session, user });
+          return { data: { user, session }, error: null };
+        }
+
+        return { data: null, error: { message: 'Invalid demo credentials' } };
       },
+
+      // Simulate OAuth by creating a demo session as well
       signInWithOAuth: async (options: any) => {
-        return { data: null, error: null };
+        const user = { id: 'demo_oauth_user', email: DEMO_EMAIL, user_metadata: { name: 'Demo User' } };
+        const session = { user, access_token: 'demo_oauth_token', expires_at: Date.now() + 1000 * 60 * 60 };
+        writeSession({ session, user });
+        return { data: { user, session }, error: null };
       },
+
       signUp: async ({ email, password }: { email: string; password: string }) => {
+        // For demo, accept signups but only persist for the session
+        const user = { id: `user_${Date.now()}`, email, user_metadata: { name: email.split('@')[0] } };
+        const session = { user, access_token: 'demo_signup_token', expires_at: Date.now() + 1000 * 60 * 60 };
+        writeSession({ session, user });
+        return { data: { user, session }, error: null };
+      },
+
+      signOut: async () => {
+        clearSession();
         return { data: null, error: null };
       },
-      signOut: async () => ({ data: null, error: null }),
+
       resetPasswordForEmail: async (email: string) => ({ data: null, error: null }),
-      getSession: async () => ({ data: { session: null } }),
+
+      // Return the persisted demo session if present
+      getSession: async () => {
+        const raw = readSession();
+        if (raw && raw.session) return { data: { session: raw.session } };
+        return { data: { session: null } };
+      },
     },
   } as any;
 }
