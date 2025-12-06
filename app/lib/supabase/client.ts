@@ -1,44 +1,13 @@
-export function createClient() {
-  const { env } = require('../env');
-  
-  const mockAuth = {
-    signInWithPassword: async (credentials: any) => ({ data: null, error: null }),
-    signInWithOAuth: async (options: any) => ({ data: null, error: null }),
-    signUp: async (credentials: any) => ({ data: null, error: null }),
-    signOut: async () => ({ error: null }),
-    resetPasswordForEmail: async (email: string, options?: any) => ({ data: null, error: null }),
-    updateUser: async (attributes: any) => ({ data: null, error: null }),
-    getSession: async () => ({ data: { session: null } }),
-    getUser: async () => ({ data: { user: null }, error: null }),
-    onAuthStateChange: (callback: any) => ({ data: { subscription: { unsubscribe: () => {} } } }),
-  };
-  
-  if (env.useMockMode) {
-    return {
-      from: (table: string) => ({
-        select: (columns?: string) => ({
-          eq: (column: string, value: any) => ({
-            maybeSingle: async () => ({ data: null, error: null }),
-            single: async () => ({ data: null, error: null }),
-          }),
-        }),
-        insert: async (rows: any[]) => ({ data: rows, error: null }),
-      }),
-      auth: mockAuth,
-    };
-  }
-
-  // TODO: Implement real Supabase client
+export function createClient(): any {
   return {
-    from: (table: string) => ({
-      select: (columns?: string) => ({
-        eq: (column: string, value: any) => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
           maybeSingle: async () => ({ data: null, error: null }),
           single: async () => ({ data: null, error: null }),
         }),
       }),
-      insert: async (rows: any[]) => ({ data: rows, error: null }),
+      insert: async () => ({ data: null, error: null }),
     }),
-    auth: mockAuth,
-  };
+  } as any;
 }
