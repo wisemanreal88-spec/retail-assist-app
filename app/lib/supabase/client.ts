@@ -13,6 +13,14 @@ export function createClient(): any {
   function writeSession(session: any) {
     try {
       if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      try {
+        if (typeof document !== 'undefined') {
+          const cookieVal = encodeURIComponent(JSON.stringify(session));
+          document.cookie = `ra_demo_session=${cookieVal}; Path=/; Max-Age=${60 * 60}; SameSite=Lax`;
+        }
+      } catch (e) {
+        // ignore cookie write failures
+      }
     } catch (e) {
       // ignore
     }
@@ -71,6 +79,13 @@ export function createClient(): any {
 
       signOut: async () => {
         clearSession();
+        try {
+          if (typeof document !== 'undefined') {
+            document.cookie = 'ra_demo_session=; Path=/; Max-Age=0; SameSite=Lax';
+          }
+        } catch (e) {
+          // ignore
+        }
         return { data: null, error: null };
       },
 

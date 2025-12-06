@@ -1,3 +1,5 @@
+import { cookies } from 'next/headers';
+
 function createQueryBuilder() {
   const builder = {
     eq: (column: string, value: any) => createQueryBuilder(),
@@ -23,7 +25,25 @@ export async function createServerSupabaseClient(): Promise<any> {
       upsert: (rows: any, options?: any) => createQueryBuilder(),
     }),
     auth: {
-      getSession: async () => ({ data: { session: null } }),
+      getSession: async () => {
+        try {
+          const cookieStore = cookies();
+          const demo = cookieStore.get('ra_demo_session');
+          if (demo && demo.value) {
+            try {
+              const parsed = JSON.parse(decodeURIComponent(demo.value));
+              if (parsed && parsed.session) return { data: { session: parsed.session } };
+              if (parsed && parsed.user) return { data: { session: { user: parsed.user } } };
+            } catch (e) {
+              // fallthrough
+            }
+          }
+        } catch (e) {
+          // ignore cookie read errors on non-next server contexts
+        }
+
+        return { data: { session: null } };
+      },
     },
   } as any;
 }
