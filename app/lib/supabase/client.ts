@@ -1,6 +1,15 @@
 export function createClient() {
   const { env } = require('../env');
   
+  const mockAuth = {
+    signInWithPassword: async (credentials: any) => ({ data: null, error: null }),
+    signInWithOAuth: async (options: any) => ({ data: null, error: null }),
+    signUp: async (credentials: any) => ({ data: null, error: null }),
+    signOut: async () => ({ error: null }),
+    getSession: async () => ({ data: { session: null } }),
+    onAuthStateChange: (callback: any) => ({ data: { subscription: { unsubscribe: () => {} } } }),
+  };
+  
   if (env.useMockMode) {
     return {
       from: (table: string) => ({
@@ -12,13 +21,7 @@ export function createClient() {
         }),
         insert: async (rows: any[]) => ({ data: rows, error: null }),
       }),
-      auth: {
-        signInWithPassword: async (credentials: any) => ({ data: null, error: null }),
-        signUp: async (credentials: any) => ({ data: null, error: null }),
-        signOut: async () => ({ error: null }),
-        getSession: async () => ({ data: { session: null } }),
-        onAuthStateChange: (callback: any) => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      },
+      auth: mockAuth,
     };
   }
 
@@ -33,12 +36,6 @@ export function createClient() {
       }),
       insert: async (rows: any[]) => ({ data: rows, error: null }),
     }),
-    auth: {
-      signInWithPassword: async (credentials: any) => ({ data: null, error: null }),
-      signUp: async (credentials: any) => ({ data: null, error: null }),
-      signOut: async () => ({ error: null }),
-      getSession: async () => ({ data: { session: null } }),
-      onAuthStateChange: (callback: any) => ({ data: { subscription: { unsubscribe: () => {} } } }),
-    },
+    auth: mockAuth,
   };
 }
