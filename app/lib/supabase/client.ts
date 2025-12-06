@@ -12,6 +12,13 @@ export function createClient() {
         }),
         insert: async (rows: any[]) => ({ data: rows, error: null }),
       }),
+      auth: {
+        signInWithPassword: async (credentials: any) => ({ data: null, error: null }),
+        signUp: async (credentials: any) => ({ data: null, error: null }),
+        signOut: async () => ({ error: null }),
+        getSession: async () => ({ data: { session: null } }),
+        onAuthStateChange: (callback: any) => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      },
     };
   }
 
@@ -26,5 +33,12 @@ export function createClient() {
       }),
       insert: async (rows: any[]) => ({ data: rows, error: null }),
     }),
+    auth: {
+      signInWithPassword: async (credentials: any) => ({ data: null, error: null }),
+      signUp: async (credentials: any) => ({ data: null, error: null }),
+      signOut: async () => ({ error: null }),
+      getSession: async () => ({ data: { session: null } }),
+      onAuthStateChange: (callback: any) => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    },
   };
 }
