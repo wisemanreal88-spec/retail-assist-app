@@ -27,8 +27,8 @@ export async function createServerSupabaseClient(): Promise<any> {
     auth: {
       getSession: async () => {
         try {
-          const cookieStore = cookies();
-          const demo = cookieStore.get('ra_demo_session');
+          const cookieStore: any = await cookies();
+          const demo = cookieStore?.get?.('ra_demo_session');
           if (demo && demo.value) {
             try {
               const parsed = JSON.parse(decodeURIComponent(demo.value));
