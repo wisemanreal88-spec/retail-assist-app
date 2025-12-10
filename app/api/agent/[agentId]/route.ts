@@ -1,92 +1,129 @@
 import { NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { createAdminSupabaseClient } from '@/lib/supabase/admin';
-import { createMockAdminSupabaseClient } from '@/lib/supabase/mock-client';
-import { callOpenAIChat } from '@/lib/openai/server';
-import { callOpenAI } from '@/lib/openai/mock';
+import { createServerSupabaseClient, createAdminSupabaseClient } from '@/lib/supabase/server';
+import { createMockAdminSupabaseClient } from '@/lib/supabase/server';
+import { getAgentById, logMessage } from '@/lib/supabase/queries';
+import { callOpenAIChat, generateAgentResponse, estimateTokens, calculateOpenAICost } from '@/lib/openai/server';
+import { generateMockResponse } from '@/lib/openai/mock';
 import { env } from '@/lib/env';
 
 export async function POST(request: Request, { params }: { params: Promise<{ agentId: string }> }) {
   try {
     const { agentId } = await params;
     const body = await request.json();
-    const message = body.message;
-    if (!message) return NextResponse.json({ error: 'Missing message' }, { status: 400 });
+    const { message } = body;
 
-    // Check for API key in headers (public API use)
-    const apiKeyHeader = request.headers.get('x-api-key') || request.headers.get('authorization')?.replace(/^Bearer\s+/, '');
+    if (!message) {
+      return NextResponse.json({ error: 'Missing message' }, { status: 400 });
+    }
 
-    // Use mock or real client based on test mode
-    const isTestMode = env.isTestMode;
-    
-    // Create supabase server client (uses cookies for auth when no API key)
-    const supabase = isTestMode ? await createMockAdminSupabaseClient() : await createServerSupabaseClient();
+    // Handle mock mode
+    if (env.useMockMode) {
+      const mockReply = await generateMockResponse('You are a helpful assistant', message);
+      return NextResponse.json({ reply: mockReply });
+    }
+
+    const supabase = await createServerSupabaseClient();
+    const adminSupabase = await createAdminSupabaseClient();
+
+    // Get API key from headers (for public API)
+    const apiKeyHeader = request.headers.get('x-api-key') || 
+      request.headers.get('authorization')?.replace(/^Bearer\s+/, '');
 
     let agent: any = null;
+    let isApiKeyAuth = false;
 
     if (apiKeyHeader) {
-      // Use admin client for API-key lookups (bypass RLS)
-      const admin = isTestMode ? await createMockAdminSupabaseClient() : await createAdminSupabaseClient();
-      const { data: agentRow, error: keyErr } = await admin
+      // Lookup agent by API key (requires admin client to bypass RLS)
+      const { data: agentRow, error: keyErr } = await adminSupabase
         .from('agents')
         .select('*')
         .eq('id', agentId)
         .eq('api_key', apiKeyHeader)
-        .limit(1)
-        .maybeSingle();
-      if (keyErr) {
-        console.error('supabase error', keyErr);
-        return NextResponse.json({ error: 'Database error' }, { status: 500 });
+        .is('deleted_at', null)
+        .single();
+
+      if (keyErr || !agentRow) {
+        return NextResponse.json(
+          { error: 'Invalid API key or agent not found' },
+          { status: 401 }
+        );
       }
-      if (!agentRow) return NextResponse.json({ error: 'Invalid API key or agent not found' }, { status: 401 });
+
       agent = agentRow;
-      // use admin for inserting logs when api key used
-      try {
-        await admin.from('agent_logs').insert([{ agent_id: agentId, user_message: message, assistant_message: 'log-placeholder' }]);
-      } catch (e) {
-        // ignore; we'll re-insert later with supabase if desired
-      }
+      isApiKeyAuth = true;
     } else {
-      // Require authenticated session for non-API-key requests
+      // Require authenticated session
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session && !isTestMode) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-      // Fetch agent config
-      const { data: agentRow, error } = await supabase.from('agents').select('*').eq('id', agentId).limit(1).maybeSingle();
-      if (error && !isTestMode) {
-        console.error('supabase error', error);
-        return NextResponse.json({ error: 'Database error' }, { status: 500 });
+      if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      agent = agentRow;
-      if (!agent && !isTestMode) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
-      
-      // Create a mock agent if in test mode and none found
-      if (!agent && isTestMode) {
-        agent = { id: agentId, system_prompt: 'You are a helpful retail assistant.', model: 'gpt-4o-mini' };
+
+      // Get agent - RLS will filter to user's workspace
+      agent = await getAgentById(agentId);
+      if (!agent) {
+        return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
       }
     }
 
-    const systemPrompt = agent.system_prompt ?? 'You are a helpful assistant for retail support.';
-    const model = agent.model ?? 'gpt-4o-mini';
+    // Verify agent is enabled
+    if (!agent.enabled) {
+      return NextResponse.json({ error: 'Agent is disabled' }, { status: 403 });
+    }
 
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: message },
-    ];
+    // Generate response using OpenAI or mock
+    const systemPrompt = agent.system_prompt || 'You are a helpful assistant for retail support.';
+    const model = agent.model || 'gpt-4o-mini';
 
-    // Use mock or real OpenAI based on test mode
-    const reply = isTestMode ? await callOpenAI(message) : await callOpenAIChat(messages, model);
+    let reply: string;
+    let tokensUsed = 0;
+    let cost = 0;
 
-    // Optionally save to logs table (best-effort)
     try {
-      await supabase.from('agent_logs').insert([{ agent_id: agentId, user_message: message, assistant_message: reply }]);
-    } catch (e) {
-      console.warn('Failed to save log', e);
+      if (env.openai.apiKey && !env.isTestMode) {
+        // Use real OpenAI
+        reply = await generateAgentResponse(systemPrompt, message, {
+          model,
+          temperature: agent.temperature,
+          max_tokens: agent.max_tokens,
+        });
+
+        // Estimate tokens and cost
+        tokensUsed = estimateTokens(message) + estimateTokens(reply);
+        cost = calculateOpenAICost(estimateTokens(message), estimateTokens(reply), model);
+      } else {
+        // Use mock OpenAI
+        reply = await generateMockResponse(systemPrompt, message);
+        tokensUsed = estimateTokens(message) + estimateTokens(reply);
+        cost = 0; // Mock has no cost
+      }
+    } catch (openaiErr: any) {
+      console.error('OpenAI error:', openaiErr);
+      reply = agent.fallback || 'Sorry, I\'m having trouble responding right now. Please try again later.';
+      tokensUsed = 0;
+      cost = 0;
     }
 
-    return NextResponse.json({ reply });
+    // Log message to database (best-effort)
+    try {
+      const agentWorkspaceId = agent.workspace_id;
+      await logMessage(agentWorkspaceId, {
+        agent_id: agentId,
+        user_message: message,
+        assistant_message: reply,
+        tokens_used: tokensUsed,
+        cost,
+        platform: isApiKeyAuth ? 'direct_api' : 'dashboard',
+      });
+    } catch (logErr) {
+      console.warn('Failed to log message:', logErr);
+    }
+
+    return NextResponse.json({ reply, tokens_used: tokensUsed, cost });
   } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
+    console.error('Error in agent endpoint:', err);
+    return NextResponse.json(
+      { error: err.message || 'Server error' },
+      { status: 500 }
+    );
   }
 }
