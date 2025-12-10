@@ -94,3 +94,38 @@ export async function createMockAdminSupabaseClient() {
     },
   } as any;
 }
+
+/**
+ * insertSystemLog
+ *
+ * Minimal server-side helper to insert a system log entry.
+ * - Exported so other server-side modules and API routes can call it directly.
+ * - Uses admin/server Supabase client already provided in this file.
+ *
+ * Signature:
+ *   insertSystemLog({ level, message, meta })
+ */
+export async function insertSystemLog({
+  level,
+  message,
+  meta,
+}: {
+  level: string;
+  message: string;
+  meta?: any;
+}) {
+  // Prefer admin client if available for logging; fall back to server client.
+  const supabase =
+    typeof createAdminSupabaseClient === 'function'
+      ? await createAdminSupabaseClient()
+      : await createServerSupabaseClient();
+
+  // Insert into system_logs table (minimal wrapper).
+  await supabase.from('system_logs').insert([
+    {
+      level,
+      message,
+      meta: meta ?? null,
+    },
+  ]);
+}
