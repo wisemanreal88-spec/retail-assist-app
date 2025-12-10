@@ -94,3 +94,31 @@ export async function createMockAdminSupabaseClient() {
     },
   } as any;
 }
+
+/**
+ * Insert a new system log entry
+ * @param payload - The log message and optional details
+ */
+export async function insertSystemLog(payload: {
+  message: string;
+  level?: 'info' | 'warning' | 'error' | 'debug';
+  source?: string;
+  metadata?: Record<string, any>;
+}) {
+  try {
+    const supabase = await createAdminSupabaseClient();
+    const { error } = await supabase.from('system_logs').insert({
+      message: payload.message,
+      level: payload.level || 'info',
+      source: payload.source || 'system',
+      metadata: payload.metadata,
+    });
+
+    if (error) {
+      console.error('Failed to insert system log:', error.message);
+    }
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error('Exception during system log insertion:', message);
+  }
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/client';
 import type { SystemLog } from '@/lib/types/database';
 
 /**
@@ -15,9 +15,13 @@ export default function AdminLogsPage() {
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
   useEffect(() => {
+    document.title = 'Admin Logs';
+  }, []);
+
+  useEffect(() => {
     async function loadLogs() {
       try {
-        const supabase = await createServerSupabaseClient();
+        const supabase = createClient();
         let query = supabase.from('system_logs').select('*').order('timestamp', { ascending: false }).limit(100);
 
         if (filters.level !== 'all') {
