@@ -94,3 +94,8 @@ export async function createMockAdminSupabaseClient() {
     },
   } as any;
 }
+
+export async function insertSystemLog(data: Record<string, unknown>) {
+  const supabase = await createAdminSupabaseClient();
+  return supabase.from('system_logs').insert(data);
+}
