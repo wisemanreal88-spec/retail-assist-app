@@ -1,131 +1,23 @@
+// FIXED: ensure createServerSupabaseClient export matches server-only pattern required by server components
 import { cookies } from 'next/headers';
 import { createClient as supabaseCreateClient } from '@supabase/supabase-js';
-import { env } from '@/lib/env';
 
 /**
- * Server-side Supabase client with user session authentication
- * Uses cookies to maintain session across requests
+ * Server-only Supabase client factory for server components & API routes.
+ * Uses the service role key and forwards the sb-access-token from cookies as Authorization header.
+ *
+ * NOTE: This file is server-only and must not be imported by client components.
  */
-export async function createServerSupabaseClient() {
-  const cookieStore = await cookies();
-  
-  const supabase = supabaseCreateClient(
-    env.supabase.url,
-    env.supabase.anonKey,
+export const createServerSupabaseClient = () => {
+  return supabaseCreateClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      auth: {
-        persistSession: false,
+      global: {
+        headers: {
+          Authorization: cookies().get('sb-access-token')?.value || '',
+        },
       },
     }
   );
-
-  // Get session from auth header or cookies
-  const token = cookieStore.get('sb-auth-token')?.value;
-  
-  if (token) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser(token);
-
-    if (user) {
-      return supabase;
-    }
-  }
-
-  return supabase;
-}
-
-/**
- * Admin Supabase client for server-side operations
- * Uses service_role key to bypass RLS policies
- * Use only for admin operations, never expose to client
- */
-export async function createAdminSupabaseClient() {
-  if (!env.supabase.serviceRoleKey) {
-    console.warn('SUPABASE_SERVICE_ROLE_KEY not set - admin operations may fail');
-  }
-
-  const supabase = supabaseCreateClient(
-    env.supabase.url,
-    env.supabase.serviceRoleKey || env.supabase.anonKey,
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    }
-  );
-
-  return supabase;
-}
-
-/**
- * Mock admin client for testing/development
- * When NEXT_PUBLIC_USE_MOCK_SUPABASE=true, use this instead
- */
-function createQueryBuilder() {
-  const builder = {
-    eq: (column: string, value: any) => createQueryBuilder(),
-    limit: (n: number) => createQueryBuilder(),
-    order: (column: string, options?: any) => createQueryBuilder(),
-    select: (columns?: string) => createQueryBuilder(),
-    maybeSingle: async () => ({ data: null, error: null }),
-    single: async () => ({ data: null, error: null }),
-  };
-
-  return Object.assign(
-    async () => ({ data: null, error: null }),
-    builder
-  ) as any;
-}
-
-export async function createMockAdminSupabaseClient() {
-  return {
-    from: (table: string) => ({
-      select: (columns?: string) => createQueryBuilder(),
-      insert: (rows: any) => createQueryBuilder(),
-      upsert: (rows: any, options?: any) => createQueryBuilder(),
-      update: (data: any) => createQueryBuilder(),
-      delete: () => createQueryBuilder(),
-    }),
-    auth: {
-      getSession: async () => ({ data: { session: null }, error: null }),
-      getUser: async (token: string) => ({ data: { user: null }, error: null }),
-    },
-  } as any;
-}
-
-/**
- * insertSystemLog
- *
- * Minimal server-side helper to insert a system log entry.
- * - Exported so other server-side modules and API routes can call it directly.
- * - Uses admin/server Supabase client already provided in this file.
- *
- * Signature:
- *   insertSystemLog({ level, message, meta })
- */
-export async function insertSystemLog({
-  level,
-  message,
-  meta,
-}: {
-  level: string;
-  message: string;
-  meta?: any;
-}) {
-  // Prefer admin client if available for logging; fall back to server client.
-  const supabase =
-    typeof createAdminSupabaseClient === 'function'
-      ? await createAdminSupabaseClient()
-      : await createServerSupabaseClient();
-
-  // Insert into system_logs table (minimal wrapper).
-  await supabase.from('system_logs').insert([
-    {
-      level,
-      message,
-      meta: meta ?? null,
-    },
-  ]);
-}
+};

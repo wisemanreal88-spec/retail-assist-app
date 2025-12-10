@@ -1,8 +1,9 @@
-import { createServerClient } from '@/lib/supabase/server';
+// FIXED: correct server factory import name and component import paths
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getWorkspaceMembers, getWorkspaceInvites } from '@/lib/supabase/queries';
 import { WorkspaceMember, WorkspaceInvite } from '@/lib/types/database';
-import TeamMembersList from '@/app/components/team/TeamMembersList';
-import InviteMemberForm from '@/app/components/team/InviteMemberForm';
+import TeamMembersList from '@/components/team/TeamMembersList'; // FIXED: correct import path
+import InviteMemberForm from '@/components/team/InviteMemberForm'; // FIXED: correct import path
 
 /**
  * Team Management Page - Server Component
@@ -12,8 +13,8 @@ import InviteMemberForm from '@/app/components/team/InviteMemberForm';
 async function TeamPageContent() {
   try {
     // Get current user
-    const supabase = createServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = createServerSupabaseClient();
+    const { data: { user } = { data: { user: null } } } await supabase.auth.getUser();
 
     if (!user) {
       throw new Error('Not authenticated');
@@ -119,9 +120,11 @@ async function TeamPageContent() {
                               <button
                                 onClick={() => {
                                   // Copy invite link
-                                  const inviteUrl = `${window.location.origin}/auth/signup?invite=${invite.token}`;
-                                  navigator.clipboard.writeText(inviteUrl);
-                                  alert('Invite link copied to clipboard');
+                                  const inviteUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/signup?invite=${invite.token}`;
+                                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                                    navigator.clipboard.writeText(inviteUrl);
+                                    alert('Invite link copied to clipboard');
+                                  }
                                 }}
                                 className="text-blue-600 hover:text-blue-800 underline text-xs font-medium"
                               >

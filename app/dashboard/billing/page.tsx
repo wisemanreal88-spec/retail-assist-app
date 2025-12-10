@@ -1,21 +1,25 @@
+// FIXED: normalize BillingPage as a Server Component and remove nested return/useEffect issues
 import React from 'react';
-import { createServerSupabaseClient, createAdminSupabaseClient } from '@/lib/supabase/server';
-import { getUserSubscription, getPaymentHistory, getPendingMobileMoneyPayments } from '@/lib/supabase/queries';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import {
+  getUserSubscription,
+  getPaymentHistory,
+  getPendingMobileMoneyPayments,
+} from '@/lib/supabase/queries';
 import BillingActions from '@/components/billing/BillingActions';
 import MobileMoneyApprovals from '@/components/billing/MobileMoneyApprovals';
 import PaymentHistory from '@/components/billing/PaymentHistory';
 import { env } from '@/lib/env';
 
 export default async function BillingPage() {
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const supabase = createServerSupabaseClient();
+  const { data: { user } = { data: { user: null } } } = await supabase.auth.getUser();
 
-  // Get current workspace from URL or context
-  const workspace = null; // TODO: Get workspace ID from URL params or context
-  
   const subscription = user ? await getUserSubscription(user.id) : null;
 
-  // Get payment history for current workspace
+  // workspace resolution left minimal (original TODO preserved)
+  const workspace = null; // TODO: derive workspace id from params/context
+
   let paymentHistory: any[] = [];
   if (workspace) {
     const historyResult = await getPaymentHistory(workspace);
@@ -24,10 +28,8 @@ export default async function BillingPage() {
     }
   }
 
-  // For admin view: list pending mobile money payments
   let pendingPayments: any[] = [];
   try {
-    const admin = await createAdminSupabaseClient();
     if (workspace) {
       const result = await getPendingMobileMoneyPayments(workspace);
       if (!result.error) {
@@ -38,16 +40,20 @@ export default async function BillingPage() {
     console.error('Error loading pending payments:', e);
   }
 
-  // Check if user is admin/owner
+  // basic admin check
   let isAdmin = false;
   if (workspace && user) {
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspace)
-      .eq('user_id', user.id)
-      .single();
-    isAdmin = member?.role === 'admin' || member?.role === 'owner';
+    try {
+      const { data: member } = await supabase
+        .from('workspace_members')
+        .select('role')
+        .eq('workspace_id', workspace)
+        .eq('user_id', user.id)
+        .single();
+      isAdmin = member?.role === 'admin' || member?.role === 'owner';
+    } catch {
+      isAdmin = false;
+    }
   }
 
   return (
@@ -100,53 +106,6 @@ export default async function BillingPage() {
           <MobileMoneyApprovals payments={pendingPayments} />
         </section>
       )}
-    </div>
-  );
-}
-
-  useEffect(() => {
-    const loadPlans = async () => {
-      try {
-        const plansData = await mockBilling.getPlans();
-        const current = await mockBilling.getCurrentPlan();
-        setPlans(plansData);
-        setCurrentPlan(current);
-      } catch (err) {
-        console.error('Failed to load plans', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadPlans();
-  }, []);
-
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b border-card-border">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Billing</h1>
-          <p className="text-muted mt-2">Manage your subscription and billing</p>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {loading ? <p className="text-center text-muted py-12">Loading...</p> : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <div key={plan.id} className={`card p-6 ${currentPlan?.id === plan.id ? 'border-2 border-primary' : ''}`}>
-                <h3 className="text-xl font-bold">{plan.name}</h3>
-                <p className="text-3xl font-bold text-primary mt-2">P{plan.price}</p>
-                <ul className="mt-4 space-y-2">
-                  {plan.features.map((f: string, i: number) => <li key={i} className="text-sm text-muted">✓ {f}</li>)}
-                </ul>
-                <button className={`w-full mt-6 py-2 rounded font-semibold ${currentPlan?.id === plan.id ? 'bg-gray-400' : 'btn-primary'}`}>
-                  {currentPlan?.id === plan.id ? 'Current' : 'Switch'}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
